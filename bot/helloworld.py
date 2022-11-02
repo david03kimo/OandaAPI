@@ -1,3 +1,6 @@
+vscode
+
+
 import sys
 sys.path.append('/Users/apple/Documents/code/PythonX86/OandaAPI/Settings')
 import v20
