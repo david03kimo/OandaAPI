@@ -44,7 +44,7 @@ class StreamingForexPrices(object):
         
         for msg_type, msg in response.parts():
             if msg_type == 'pricing.ClientPrice' and not np.isnan(msg.closeoutAsk):    
-                print(msg)
+                # print(msg)
                 instrument = msg.instrument
                 time = msg.time
                 bid = msg.closeoutBid # or bids.price?

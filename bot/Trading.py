@@ -1,3 +1,9 @@
+'''
+need historicalData?
+
+
+'''
+
 import queue
 # from queue import Queue
 import threading
@@ -39,7 +45,7 @@ if __name__ == "__main__":
     events = queue.Queue()
 
     # Trade 10000 units of EUR/USD
-    instrument = "EUR_USD"
+    instrument = "AUD_USD"
     units = 10000
 
     # Create the OANDA market price streaming class
