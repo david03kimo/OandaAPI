@@ -1,7 +1,6 @@
 class Event(object):
     pass
 
-
 class TickEvent(Event):
     def __init__(self, instrument, time, bid, ask):
         self.type = 'TICK'
@@ -9,7 +8,6 @@ class TickEvent(Event):
         self.time = time
         self.bid = bid
         self.ask = ask
-
 
 class OrderEvent(Event):
     def __init__(self, instrument, units, order_type, side):
