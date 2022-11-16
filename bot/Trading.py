@@ -1,6 +1,10 @@
 '''
-add candles.py
-test non  RFC 3339?
+
+requirement:
+SL/TP/Close position
+import instruments
+toggle tradeable or not with timestamp.
+multi-instruments
 bid ask mid
 
 '''
@@ -16,6 +20,11 @@ from settings import STREAM_DOMAIN, API_DOMAIN, ACCESS_TOKEN, ACCOUNT_ID,PORT,SS
 from strategy import TestRandomStrategy
 from streaming import StreamingForexPrices
 # from candles import CandlesForexPrices
+
+# Trade 10000 units of EUR/USD
+instrument = "TWIX_USD"
+units = 1
+
 
 
 def trade(events, strategy, execution):
@@ -46,9 +55,7 @@ if __name__ == "__main__":
     heartbeat = 0.5  # Half a second between polling
     events = queue.Queue()
 
-    # Trade 10000 units of EUR/USD
-    instrument = "AUD_USD"
-    units = 10000
+    
     
     # # Creat the OANDA historical data class
     # historicalCandles=CandlesForexPrices(
@@ -78,10 +85,8 @@ if __name__ == "__main__":
     # and another for the market price streaming class
     trade_thread = threading.Thread(target=trade, args=(events, strategy, execution))
     price_thread = threading.Thread(target=prices.stream_to_queue, args=[])
-    # execution_thread = threading.Thread(target=execution.connect_to_candles, args=[])
 
     # Start both threads
     trade_thread.start()
     price_thread.start()
-    # execution_thread.start()
     

@@ -53,8 +53,9 @@ class StreamingForexPrices(object):
                 ask = msg.closeoutAsk
                 tev = TickEvent(instrument, time, bid, ask)
                 self.events_queue.put(tev)
+                # print(msg)
                 if msg.status!='tradeable' and msg.type=='PRICE' and not moreThanOnce:
-                    print(msg)
+                   
                     print(instrument,'is not tradeable')
                     moreThanOnce=True
             

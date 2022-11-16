@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from event import OrderEvent
-import threading
+# import threading
 
 class TestRandomStrategy(object):
     def __init__(self, instrument, units, events,df,tf):
@@ -23,23 +23,19 @@ class TestRandomStrategy(object):
             'Low':'min',
             'Close': 'last'
             }
-        
-    # def readHistoricalCandles(self):
-    #     while True:
-    #         if os.path.isfile('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/historicalCandles.csv'):
-    #             # df=pd.read_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/historicalCandles.csv',index_col=0)
-    #             df=pd.read_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/historicalCandles.csv')
-    #             break
-    #         time.sleep(1)
-        
-    #     return df
+        self.ifBarClosed=False
     
     def resample_bar(self,event):
+        ifBarClosed=False
         if event.type == 'TICK':
             ts=datetime.timestamp(datetime.strptime(event.time[:16],'%Y-%m-%dT%H:%M'))
             self.data.append([event.time,event.ask])
-            # print('event.time:',event.time,'justnow:',self.justnow,'ts:',ts,'/',ts/self.tf,'//',ts//self.tf)
-            # print(ts/(self.tf*60),ts//(self.tf*60),self.justnow,ts)
+            
+            # test ticks
+            # self.df_ticks=pd.DataFrame(self.data, columns=['DateTime','Ask'])
+            # self.df_ticks.DateTime = pd.to_datetime(self.df_ticks.DateTime)
+            # self.df_ticks.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df_ticks.csv', mode='w', index=1)
+            
             if ts/(self.tf*60)==ts//(self.tf*60) and self.justnow!=ts:  
                 # print('pass',ts/self.tf,ts//self.tf,self.justnow,ts)
                 self.df_ticks=pd.DataFrame(self.data, columns=['DateTime','Ask'])
@@ -56,16 +52,16 @@ class TestRandomStrategy(object):
                 del self.data[0:len(self.data)-1]
                 self.dfr.drop(self.dfr.index[-1], axis=0, inplace=True)
                 # self.dfr.reset_index(inplace=True)
-                # self.dfr.dropna(axis=0, how='any', inplace=True)  # 去掉空行
+                
                 if len(self.dfr.DateTime) != 0 and len(self.df.DateTime) != 0: #當有新的重組K線時
                     while self.df.iloc[-1, 0] >= self.dfr.iloc[0, 0]:  #以新的重組K線的資料為主，刪除歷史K線最後幾筆資料
                         self.df.drop(self.df.index[-1], axis=0, inplace=True)
                 self.df = pd.concat([self.df, self.dfr], ignore_index=True)
+                self.df.dropna(axis=0, how='any', inplace=True)  # 去掉空行
                 # self.df.reset_index(drop=True) 
                 self.df.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df.csv', mode='w', index=1)
-        return
-    
-    
+                ifBarClosed=True
+        return ifBarClosed
     
     def RSI(self,DF,n=3):
         "function to calculate RSI"
@@ -98,15 +94,11 @@ class TestRandomStrategy(object):
         return df
     
     def calculate_signals(self, event):
-        # order = OrderEvent(
-        #         self.instrument, self.units, "market", 'BUY'
-        #     )
-        # self.events.put(order)
         
         # Resample the ticks to candles
-        self.resample_bar(event)
-        # resample_thread = threading.Thread(target=self.resample_bar, args=(event))
+        ifBarClosed=self.resample_bar(event)
         
+        # resample_thread = threading.Thread(target=self.resample_bar, args=(event))
         
         df=self.df.copy()
         i=len(df)-1
@@ -119,11 +111,18 @@ class TestRandomStrategy(object):
         df.loc[(df['RSI'].shift(1)<80)&(df['RSI']>=80)&(df['High']<df['SMA']),'Direction']='SELL'
         df.loc[(df['RSI'].shift(1)>20)&(df['RSI']<=20)&(df['Low']>df['SMA']),'Direction']='BUY'
         df.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df_RSI_SMA.csv',index=0) 
-        if df.loc[df.index[-1],'Direction']=='BUY':
-        # if True:
-            order = OrderEvent(
-                self.instrument, self.units, "market", 'BUY'
-            )
-            self.events.put(order)
+        
+        if ifBarClosed:
+            print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
+            if df.loc[df.index[-1],'Direction']=='BUY':
+                order = OrderEvent(
+                    self.instrument, self.units, 'MARKET', 'BUY'
+                )
+                self.events.put(order)
+            elif df.loc[df.index[-1],'Direction']=='SELL':
+                order = OrderEvent(
+                    self.instrument, self.units, 'CLOSEPOSITION', 'SELL'
+                )
+                self.events.put(order)
         
         return
