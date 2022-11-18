@@ -8,6 +8,7 @@ import pandas as pd
 import mplfinance as mpf
 import configparser
 import requests
+from datetime import datetime
 
 class Execution(object):
     # def __init__(self, domain,port,ssl,application, access_token, date_format,account_id,tf,instruments):
@@ -95,76 +96,46 @@ class Execution(object):
         return
 
     def execute_order(self, event):
-        if event.order_type=='MARKET':
-            response=self.ctx.order.market(
-                self.account_id,
-                instrument=event.instrument,
-                units=event.units,
-                type=event.order_type,
-                side=event.side
-            )
-            '''
-            print(response)
-            
-            if True:
-                kwargs={}
-                kwargs['tradeid']='M'+str(self.tf)
-                kwargs['price']=0.0,
-                kwargs['--time-in-force']="GTC",
-                
-                response = self.ctx.order.stop_loss(
-                    self.account_id,
-                    **kwargs
-                )
-                '''
-            
-        elif event.order_type=='CLOSEPOSITION':
-            response = self.ctx.position.close(
-                self.account_id,
-                self.instruments,
-                longUnits="ALL"
-            )
-            
-        '''
-        if response:
-        if args.all:
-            response = self.ctx.order.list_pending(self.account_id)
-            orders = response.get("orders", 200)
-            if len(orders) == 0:
-                print("Account {} has no pending Orders to cancel".format(
-                 self.account_id
-                ))
-            
-            return
-
-        print_orders(orders)
         
-        for order in orders:
-            response = api.order.cancel(account_id, order.id)
-
-            orderCancelTransaction = response.get(
-                "orderCancelTransaction", 200
+        # If open position doesn't exist
+        response_OpenPositions=self.ctx.trade.list_open(self.account_id)
+        if response_OpenPositions.body['trades']==[]:
+            response_MarketOrder=self.ctx.order.market(
+                 self.account_id,
+                 instrument=event.instrument,
+                 units=event.units,
+                 type=event.order_type,
+                 stopLossOnFill=v20.transaction.StopLossDetails(price=event.SL)
             )
-
-            print(orderCancelTransaction.title())
-
-        elif args.order_id is not None:
-
-            #
-            # Submit the request to create the Market Order
-            #
-            response = api.order.cancel(
-                account_id,
-                args.order_id
-            )
-
-            print("Response: {} ({})".format(response.status, response.reason))
-            print("")
-        '''
-        
-        print(datetime.fromtimestamp(int(datetime.now().timestamp())),response)
-        text=event.side+' '+event.instrument+' '+str(event.units)
-        self.send_Telegram(text)
+            if response_MarketOrder.status==201 and response_MarketOrder.reason=='Created':
+                print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id),event.side,str(abs(response_MarketOrder.body['orderFillTransaction'].units)),'@',str(response_MarketOrder.body['orderFillTransaction'].price))
+                text='Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id)+' '+event.side+' '+response_MarketOrder.body['orderFillTransaction'].instrument+' '+str(response_MarketOrder.body['orderFillTransaction'].units)+'@'+str(response_MarketOrder.body['orderFillTransaction'].price)
+                self.send_Telegram(text)
+        else:
+            for position in response_OpenPositions.body['trades']:
+                # If open position exists
+                if position.instrument==event.instrument and event.units>0 and position.currentUnits>0:
+                    response_ClosePosition = self.ctx.position.close(
+                        self.account_id,
+                        self.instruments,
+                        longUnits="ALL"
+                    )
+                    if response_ClosePosition.status==200:
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id),response_ClosePosition.body['longOrderFillTransaction'].instrument,str(response_ClosePosition.body['longOrderFillTransaction'].units),'@',str(response_ClosePosition.body['longOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['longOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance))
+                        text='Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id)+' '+response_ClosePosition.body['longOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['longOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['longOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['longOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance)
+                        # text='Market Order #'+str(response.body['orderFillTransaction'].id)+' '+event.side+' '+event.instrument+' '+str(event.units)+'@'+str(response.body['orderFillTransaction'].price)
+                        self.send_Telegram(text)
+                elif position.instrument==event.instrument and event.units<0 and position.currentUnits<0:
+                    response_ClosePosition = self.ctx.position.close(
+                        self.account_id,
+                        self.instruments,
+                        shortUnits="ALL"
+                    )        
+                    if response_ClosePosition.status==200:   
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
+                        text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
+                        # text='Market Order #'+str(response.body['orderFillTransaction'].id)+' '+event.side+' '+event.instrument+' '+str(event.units)+'@'+str(response.body['orderFillTransaction'].price)
+                        self.send_Telegram(text)
         
         '''
         curl: Close 99 units of EUR_USD Position in Account

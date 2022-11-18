@@ -1,11 +1,15 @@
 '''
 
+import stragy from myAllStrategy
+
 requirement:
 SL/TP/Close position
 import instruments
 toggle tradeable or not with timestamp.
 multi-instruments
 bid ask mid
+breakdown prelow and than breakup prehigh and exit at breakdown prelow
+pre 3 day high getting lower and lower and than breakup the pre day high.
 
 '''
 
@@ -21,9 +25,10 @@ from strategy import TestRandomStrategy
 from streaming import StreamingForexPrices
 # from candles import CandlesForexPrices
 
-# Trade 10000 units of EUR/USD
-instrument = "TWIX_USD"
-units = 1
+# Input trade setup
+instrument = "XAG_USD"
+units = 6
+SL=20.73805
 
 
 
@@ -79,7 +84,7 @@ if __name__ == "__main__":
     # Create the strategy/signal generator, passing the
     # instrument, quantity of units and the events queue
     # strategy = TestRandomStrategy(instrument, units, events)
-    strategy = TestRandomStrategy(instrument, units, events,df,TF)
+    strategy = TestRandomStrategy(instrument, units,SL, events,df,TF)
 
     # Create two separate threads: One for the trading loop
     # and another for the market price streaming class

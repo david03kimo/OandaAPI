@@ -5,10 +5,11 @@ from event import OrderEvent
 # import threading
 
 class TestRandomStrategy(object):
-    def __init__(self, instrument, units, events,df,tf):
+    def __init__(self, instrument, units,sl, events,df,tf):
     # def __init__(self, instrument, units, events,tf,df):
         self.instrument = instrument
         self.units = units
+        self.SL=sl
         self.events = events
         self.ticks = 0
         self.tf=tf
@@ -116,12 +117,12 @@ class TestRandomStrategy(object):
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
             if df.loc[df.index[-1],'Direction']=='BUY':
                 order = OrderEvent(
-                    self.instrument, self.units, 'MARKET', 'BUY'
+                    self.instrument, self.units, 'MARKET', 'BUY',self.SL
                 )
                 self.events.put(order)
             elif df.loc[df.index[-1],'Direction']=='SELL':
                 order = OrderEvent(
-                    self.instrument, self.units, 'CLOSEPOSITION', 'SELL'
+                    self.instrument, self.units, 'MARKET', 'SELL',self.SL
                 )
                 self.events.put(order)
         
