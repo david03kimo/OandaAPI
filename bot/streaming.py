@@ -1,10 +1,8 @@
 from event import TickEvent
 import v20
-import numpy as np
 
 class StreamingForexPrices(object):
     def __init__(
-        # self, domain,port,ssl, application,access_token,date_format,
         self, domain,port,ssl, application,access_token,
         account_id, instruments, events_queue
     ):
@@ -13,7 +11,6 @@ class StreamingForexPrices(object):
         self.ssl=ssl
         self.application=application
         self.access_token = access_token
-        # self.date_format=date_format
         self.account_id = account_id
         self.instruments = instruments
         self.events_queue = events_queue
@@ -34,7 +31,6 @@ class StreamingForexPrices(object):
                  snapshot=True,
                  instruments=self.instruments
             )
-            
             return resp
         except Exception as e:
             print("Caught exception when connecting to stream\n" + str(e))
@@ -43,9 +39,8 @@ class StreamingForexPrices(object):
 
     def stream_to_queue(self):
         response = self.connect_to_stream()
-        moreThanOnce=False
         for msg_type, msg in response.parts():
-            if msg_type == 'pricing.ClientPrice' and msg.closeoutAsk is not None:    
+            if msg_type == 'pricing.ClientPrice' and msg.status=='tradeable' and msg.closeoutAsk is not None:    
                 # print(msg)
                 instrument = msg.instrument
                 time = msg.time
@@ -54,10 +49,7 @@ class StreamingForexPrices(object):
                 tev = TickEvent(instrument, time, bid, ask)
                 self.events_queue.put(tev)
                 # print(msg)
-                if msg.status!='tradeable' and msg.type=='PRICE' and not moreThanOnce:
-                   
-                    print(instrument,'is not tradeable')
-                    moreThanOnce=True
+              
             
         return
                 

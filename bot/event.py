@@ -10,11 +10,12 @@ class TickEvent(Event):
         self.ask = ask
 
 class OrderEvent(Event):
-    def __init__(self, instrument, units, order_type, side,sl):
+    def __init__(self, instrument, units, order_type, side,sl,tp):
         self.type = 'ORDER'
         self.instrument = instrument
         self.units = units
         self.order_type = order_type
         self.side = side
         self.SL=sl
+        self.TP=tp
         

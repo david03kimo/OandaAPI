@@ -2,22 +2,20 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from event import OrderEvent
-# import threading
+import random
+from allStrategies import RiskManage,Strategies
+
 
 class TestRandomStrategy(object):
-    def __init__(self, instrument, units,sl, events,df,tf):
-    # def __init__(self, instrument, units, events,tf,df):
+    def __init__(self, instrument, units, events,df,tf):
         self.instrument = instrument
         self.units = units
-        self.SL=sl
         self.events = events
         self.ticks = 0
         self.tf=tf
         self.justnow=''
         self.data=[]
         self.df=df
-        # print(df)
-        # c=input('xxx')
         self.res_dict = {
             'Open':'first',
             'High':'max',
@@ -64,66 +62,26 @@ class TestRandomStrategy(object):
                 ifBarClosed=True
         return ifBarClosed
     
-    def RSI(self,DF,n=3):
-        "function to calculate RSI"
-        df = DF.copy()
-        df['delta']=df['Close'] - df['Close'].shift(1)
-        df['gain']=np.where(df['delta']>=0,df['delta'],0)
-        df['loss']=np.where(df['delta']<0,abs(df['delta']),0)
-        avg_gain = []
-        avg_loss = []
-        gain = df['gain'].tolist()
-        loss = df['loss'].tolist()
-        for i in range(len(df)):
-            if i < n:
-                avg_gain.append(np.NaN)
-                avg_loss.append(np.NaN)
-            elif i == n:
-                avg_gain.append(df['gain'].rolling(n).mean()[n])
-                avg_loss.append(df['loss'].rolling(n).mean()[n])
-            elif i > n:
-                avg_gain.append(((n-1)*avg_gain[i-1] + gain[i])/n)
-                avg_loss.append(((n-1)*avg_loss[i-1] + loss[i])/n)
-        df['avg_gain']=np.array(avg_gain)
-        df['avg_loss']=np.array(avg_loss)
-        df['RS'] = df['avg_gain']/df['avg_loss']
-        df['RSI'] = 100 - (100/(1+df['RS']))
-        df=df.drop(['RS','avg_loss','avg_gain','gain','loss','delta'],axis=1)
-        # print(df)
-        df.dropna(axis=0, how='any', inplace=True)
-
-        return df
-    
     def calculate_signals(self, event):
-        
-        # Resample the ticks to candles
         ifBarClosed=self.resample_bar(event)
-        
-        # resample_thread = threading.Thread(target=self.resample_bar, args=(event))
-        
-        df=self.df.copy()
-        i=len(df)-1
-        if i<3:
-            return np.nan
-        df['RSI']=self.RSI(df)['RSI']
-        df['SMA']=df['Close'].rolling(100).mean()
-        # df.loc[(df['RSI'].shift(1)<80)&(df['RSI']>=80),'Direction']='SELL'
-        # df.loc[(df['RSI'].shift(1)>20)&(df['RSI']<=20),'Direction']='BUY'
-        df.loc[(df['RSI'].shift(1)<80)&(df['RSI']>=80)&(df['High']<df['SMA']),'Direction']='SELL'
-        df.loc[(df['RSI'].shift(1)>20)&(df['RSI']<=20)&(df['Low']>df['SMA']),'Direction']='BUY'
-        df.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df_RSI_SMA.csv',index=0) 
-        
+        st=Strategies()
+        rm=RiskManage()
+        action=st._RSI(self.df)
+        # for test
+        # action='BUY'
+        # ifBarClosed=True
+        SL=rm.SL(self.df,action)
+        TP=rm.TP(self.df,action)
         if ifBarClosed:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
-            if df.loc[df.index[-1],'Direction']=='BUY':
+            if action=='BUY':
                 order = OrderEvent(
-                    self.instrument, self.units, 'MARKET', 'BUY',self.SL
+                    self.instrument, self.units, 'MARKET', action,SL,TP
                 )
                 self.events.put(order)
-            elif df.loc[df.index[-1],'Direction']=='SELL':
+            elif action=='SELL':
                 order = OrderEvent(
-                    self.instrument, self.units, 'MARKET', 'SELL',self.SL
+                    self.instrument, self.units, 'MARKET', action,SL,TP
                 )
                 self.events.put(order)
-        
         return

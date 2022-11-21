@@ -9,16 +9,15 @@ import mplfinance as mpf
 import configparser
 import requests
 from datetime import datetime
+import time
 
 class Execution(object):
-    # def __init__(self, domain,port,ssl,application, access_token, date_format,account_id,tf,instruments):
     def __init__(self, domain,port,ssl,application, access_token, account_id,tf,instruments):
         self.domain = domain
         self.port=port
         self.ssl=ssl
         self.application=application
         self.access_token = access_token
-        # self.date_format=date_format
         self.account_id = account_id
         self.tf=tf
         self.instruments=instruments
@@ -29,7 +28,6 @@ class Execution(object):
                  self.ssl,
                  application=self.application,
                  token=self.access_token,
-                #  datetime_format=self.date_format
         )
         
         return
@@ -97,24 +95,43 @@ class Execution(object):
 
     def execute_order(self, event):
         
-        # If open position doesn't exist
+        # Check open position
         response_OpenPositions=self.ctx.trade.list_open(self.account_id)
+        # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'checked openposition')
+
+         # If open position doesn't exist
         if response_OpenPositions.body['trades']==[]:
+            # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'no open position')
+
             response_MarketOrder=self.ctx.order.market(
                  self.account_id,
                  instrument=event.instrument,
                  units=event.units,
                  type=event.order_type,
-                 stopLossOnFill=v20.transaction.StopLossDetails(price=event.SL)
+                 stopLossOnFill=v20.transaction.StopLossDetails(price=event.SL),
+                 takeProfitOnFill=v20.transaction.TakeProfitDetails(price=event.TP)
             )
             if response_MarketOrder.status==201 and response_MarketOrder.reason=='Created':
-                print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id),event.side,str(abs(response_MarketOrder.body['orderFillTransaction'].units)),'@',str(response_MarketOrder.body['orderFillTransaction'].price))
-                text='Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id)+' '+event.side+' '+response_MarketOrder.body['orderFillTransaction'].instrument+' '+str(response_MarketOrder.body['orderFillTransaction'].units)+'@'+str(response_MarketOrder.body['orderFillTransaction'].price)
-                self.send_Telegram(text)
+                if 'orderFillTransaction' in response_MarketOrder.body.keys():
+                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id),event.side,str(abs(response_MarketOrder.body['orderFillTransaction'].units)),'@',str(response_MarketOrder.body['orderFillTransaction'].price))
+                    text='Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id)+' '+event.side+' '+response_MarketOrder.body['orderFillTransaction'].instrument+' '+str(response_MarketOrder.body['orderFillTransaction'].units)+'@'+str(response_MarketOrder.body['orderFillTransaction'].price)
+                    self.send_Telegram(text)
+                else:
+                    text='KeyError:orderFillTransaction doesn'+"'"+'t exist!'
+                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
+                    time.sleep(3)
+
+            elif response_MarketOrder.status==400:
+                text='Status: '+str(response_MarketOrder.status)+' Reason: '+response_MarketOrder.reason
+                print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
+                time.sleep(3)
+                return
+            
+        # If open position exist
         else:
+            # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'open position exist')
             for position in response_OpenPositions.body['trades']:
-                # If open position exists
-                if position.instrument==event.instrument and event.units>0 and position.currentUnits>0:
+                if event.side=='SELL' and position.instrument==event.instrument and event.units>0 and position.currentUnits>0:
                     response_ClosePosition = self.ctx.position.close(
                         self.account_id,
                         self.instruments,
@@ -123,9 +140,8 @@ class Execution(object):
                     if response_ClosePosition.status==200:
                         print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id),response_ClosePosition.body['longOrderFillTransaction'].instrument,str(response_ClosePosition.body['longOrderFillTransaction'].units),'@',str(response_ClosePosition.body['longOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['longOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance))
                         text='Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id)+' '+response_ClosePosition.body['longOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['longOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['longOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['longOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance)
-                        # text='Market Order #'+str(response.body['orderFillTransaction'].id)+' '+event.side+' '+event.instrument+' '+str(event.units)+'@'+str(response.body['orderFillTransaction'].price)
                         self.send_Telegram(text)
-                elif position.instrument==event.instrument and event.units<0 and position.currentUnits<0:
+                elif event.side=='BUY' and position.instrument==event.instrument and event.units<0 and position.currentUnits<0:
                     response_ClosePosition = self.ctx.position.close(
                         self.account_id,
                         self.instruments,
@@ -134,8 +150,8 @@ class Execution(object):
                     if response_ClosePosition.status==200:   
                         print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
                         text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
-                        # text='Market Order #'+str(response.body['orderFillTransaction'].id)+' '+event.side+' '+event.instrument+' '+str(event.units)+'@'+str(response.body['orderFillTransaction'].price)
                         self.send_Telegram(text)
+        return
         
         '''
         curl: Close 99 units of EUR_USD Position in Account
@@ -162,8 +178,6 @@ class Execution(object):
             '/v3/accounts/{accountID}/orders'
         )
         '''
-        
-        return
     
     def send_Telegram(self,text):
         config = configparser.ConfigParser()

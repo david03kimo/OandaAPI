@@ -1,6 +1,6 @@
 '''
 
-import stragy from myAllStrategy
+check balance and margin
 
 requirement:
 SL/TP/Close position
@@ -26,11 +26,8 @@ from streaming import StreamingForexPrices
 # from candles import CandlesForexPrices
 
 # Input trade setup
-instrument = "XAG_USD"
-units = 6
-SL=20.73805
-
-
+instrument = "JP225_USD"
+units = 0.5
 
 def trade(events, strategy, execution):
     """
@@ -51,7 +48,6 @@ def trade(events, strategy, execution):
                 if event.type == 'TICK':
                     strategy.calculate_signals(event)
                 elif event.type == 'ORDER':
-                    print("Executing order!")
                     execution.execute_order(event)
         time.sleep(heartbeat)
 
@@ -72,7 +68,6 @@ if __name__ == "__main__":
     # Create the OANDA market price streaming class
     # making sure to provide authentication commands
     prices = StreamingForexPrices(
-        # STREAM_DOMAIN, PORT,SSL,APPLICATION,ACCESS_TOKEN, DATE_FORMAT,ACCOUNT_ID,
         STREAM_DOMAIN, PORT,SSL,APPLICATION,ACCESS_TOKEN,ACCOUNT_ID,
         instrument, events
     )
@@ -84,7 +79,7 @@ if __name__ == "__main__":
     # Create the strategy/signal generator, passing the
     # instrument, quantity of units and the events queue
     # strategy = TestRandomStrategy(instrument, units, events)
-    strategy = TestRandomStrategy(instrument, units,SL, events,df,TF)
+    strategy = TestRandomStrategy(instrument, units,events,df,TF)
 
     # Create two separate threads: One for the trading loop
     # and another for the market price streaming class
