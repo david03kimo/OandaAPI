@@ -1,40 +1,38 @@
-import numpy as np
-import pandas as pd
 from datetime import datetime
 from event import OrderEvent
-import random
 from allStrategies import RiskManage,Strategies
+from settings import API_DOMAIN, ACCESS_TOKEN
+import pandas as pd
 
 
 class TestRandomStrategy(object):
     def __init__(self, instrument, units, events,df,tf):
+        self.domain=API_DOMAIN
+        self.token=ACCESS_TOKEN
         self.instrument = instrument
         self.units = units
         self.events = events
-        self.ticks = 0
         self.tf=tf
-        self.justnow=''
-        self.data=[]
         self.df=df
+        self.ifBarClosed=False
+        self.data=[]
+        self.justnow=''
         self.res_dict = {
             'Open':'first',
             'High':'max',
             'Low':'min',
             'Close': 'last'
             }
-        self.ifBarClosed=False
-    
-    def resample_bar(self,event):
+        
+    def resample_to_candles(self,event):
         ifBarClosed=False
         if event.type == 'TICK':
             ts=datetime.timestamp(datetime.strptime(event.time[:16],'%Y-%m-%dT%H:%M'))
             self.data.append([event.time,event.ask])
-            
             # test ticks
             # self.df_ticks=pd.DataFrame(self.data, columns=['DateTime','Ask'])
             # self.df_ticks.DateTime = pd.to_datetime(self.df_ticks.DateTime)
             # self.df_ticks.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df_ticks.csv', mode='w', index=1)
-            
             if ts/(self.tf*60)==ts//(self.tf*60) and self.justnow!=ts:  
                 # print('pass',ts/self.tf,ts//self.tf,self.justnow,ts)
                 self.df_ticks=pd.DataFrame(self.data, columns=['DateTime','Ask'])
@@ -51,7 +49,6 @@ class TestRandomStrategy(object):
                 del self.data[0:len(self.data)-1]
                 self.dfr.drop(self.dfr.index[-1], axis=0, inplace=True)
                 # self.dfr.reset_index(inplace=True)
-                
                 if len(self.dfr.DateTime) != 0 and len(self.df.DateTime) != 0: #當有新的重組K線時
                     while self.df.iloc[-1, 0] >= self.dfr.iloc[0, 0]:  #以新的重組K線的資料為主，刪除歷史K線最後幾筆資料
                         self.df.drop(self.df.index[-1], axis=0, inplace=True)
@@ -63,7 +60,7 @@ class TestRandomStrategy(object):
         return ifBarClosed
     
     def calculate_signals(self, event):
-        ifBarClosed=self.resample_bar(event)
+        ifBarClosed=self.resample_to_candles(event)
         st=Strategies()
         rm=RiskManage()
         action=st._RSI(self.df)
@@ -75,13 +72,16 @@ class TestRandomStrategy(object):
         if ifBarClosed:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
             if action=='BUY':
+                print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,self.units,'SL:',SL,'TP:',TP)
                 order = OrderEvent(
                     self.instrument, self.units, 'MARKET', action,SL,TP
                 )
                 self.events.put(order)
             elif action=='SELL':
+                
                 order = OrderEvent(
-                    self.instrument, self.units, 'MARKET', action,SL,TP
+                    self.instrument, -1*self.units, 'MARKET', action,SL,TP
                 )
+                print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,OrderEvent.units,'SL:',SL,'TP:',TP)
                 self.events.put(order)
         return

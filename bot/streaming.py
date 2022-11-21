@@ -3,13 +3,10 @@ import v20
 
 class StreamingForexPrices(object):
     def __init__(
-        self, domain,port,ssl, application,access_token,
+        self, domain,access_token,
         account_id, instruments, events_queue
     ):
         self.domain = domain
-        self.port=port
-        self.ssl=ssl
-        self.application=application
         self.access_token = access_token
         self.account_id = account_id
         self.instruments = instruments
@@ -19,11 +16,9 @@ class StreamingForexPrices(object):
         try:
             ctx_stream = v20.Context(
                  self.domain,
-                 self.port,
-                 self.ssl,
-                 application=self.application,
+                 443,
+                 'true',
                  token=self.access_token,
-                #  datetime_format=self.date_format
             )
         
             resp = ctx_stream.pricing.stream(
