@@ -3,15 +3,18 @@ from event import OrderEvent
 from allStrategies import RiskManage,Strategies
 from settings import API_DOMAIN, ACCESS_TOKEN
 import pandas as pd
+from decimal import Decimal
+
 import time
 
 class TestRandomStrategy(object):
-    def __init__(self, instrument, units, events,df,df_instruments,tf):
+    def __init__(self, instrument, units, events,df,df_instruments,direction,tf):
         self.domain=API_DOMAIN
         self.token=ACCESS_TOKEN
         self.instrument = instrument
         self.units = units
         self.events = events
+        self.direction = direction
         self.tf=tf
         self.df=df
         self.df_instruments=df_instruments
@@ -67,21 +70,22 @@ class TestRandomStrategy(object):
         action=st._RSI(self.df)
         
         # for test
-        # action='SELL'
+        # action='BUY'
         # ifBarClosed=True
         
         decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
-        SL=str(rm.SL(self.df,abs(decimal),action))
-        TP=str(rm.TP(self.df,abs(decimal),action))
+        SL=str(rm.SL(self.df,decimal,action))
+        TP=str(rm.TP(self.df,decimal,action))
+        print(decimal,SL,TP)
         if ifBarClosed:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
-            if action=='BUY':
+            if action=='BUY' and action==self.direction.upper():
                 print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,self.units,'SL:',SL,'TP:',TP)
                 order = OrderEvent(
                     self.instrument, self.units, 'MARKET', action,SL,TP
                 )
                 self.events.put(order)
-            elif action=='SELL':
+            elif action=='SELL' and action==self.direction.upper():
                 
                 order = OrderEvent(
                     self.instrument, -1*self.units, 'MARKET', action,SL,TP

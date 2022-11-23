@@ -1,26 +1,34 @@
-# Input trade setup
-# instrument = "TWIX_USD"
-instrument = "US30_USD"
-# instrument = "NL25_EUR"
-# instrument = "UK10YB_GBP"
-
 '''
-check balance and margin
+
+
 close market handle
-
-
-report after SL/TP
-account info:ID,base currency,total amount,balance remain to trade,leverage;optional:Realized and Unrealized PNL,margin used,open trades,open orders.
-requirement:
-SL/TP/Close position
-
-toggle tradeable or not with timestamp.
-multi-instruments
 bid ask mid
-breakdown prelow and than breakup prehigh and exit at breakdown prelow
+multi-instruments
+
+check balance and margin
+account info:ID,base currency,total amount,balance remain to trade,leverage;optional:Realized and Unrealized PNL,margin used,open trades,open orders.
+report after SL/TP
+
+requirement:
+
+SL/TP/Close position
+toggle tradeable or not with timestamp.
 type: HEARTBEAT
 
 '''
+
+# Input trade setup
+# instrument = "TWIX_USD"
+# instrument = "US30_USD"
+# instrument = "NL25_EUR"
+instrument = "UK10YB_GBP"
+
+
+# instrument = "XAG_USD"
+
+direction='BUY'
+
+
 
 import queue
 import threading
@@ -95,7 +103,7 @@ if __name__ == "__main__":
     # Create the strategy/signal generator, passing the
     # instrument, quantity of units and the events queue
     # strategy = TestRandomStrategy(instrument, units, events)
-    strategy = TestRandomStrategy(instrument, units,events,df,df_instruments,TF)
+    strategy = TestRandomStrategy(instrument, units,events,df,df_instruments,direction,TF)
 
     # Create two separate threads: One for the trading loop
     # and another for the market price streaming class
