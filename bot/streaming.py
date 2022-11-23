@@ -1,5 +1,6 @@
 from event import TickEvent
 import v20
+from datetime import datetime
 
 class StreamingForexPrices(object):
     def __init__(
@@ -16,8 +17,6 @@ class StreamingForexPrices(object):
         try:
             ctx_stream = v20.Context(
                  self.domain,
-                 443,
-                 'true',
                  token=self.access_token,
             )
         
@@ -33,17 +32,30 @@ class StreamingForexPrices(object):
         return
 
     def stream_to_queue(self):
-        response = self.connect_to_stream()
-        for msg_type, msg in response.parts():
-            if msg_type == 'pricing.ClientPrice' and msg.status=='tradeable' and msg.closeoutAsk is not None:    
-                # print(msg)
-                instrument = msg.instrument
-                time = msg.time
-                bid = msg.closeoutBid # or bids.price?
-                ask = msg.closeoutAsk
-                tev = TickEvent(instrument, time, bid, ask)
-                self.events_queue.put(tev)
-                # print(msg)
+        try:
+            response = self.connect_to_stream()
+            for msg_type, msg in response.parts():
+                # if msg_type=='pricing.PricingHeartbeat':
+                #     print(msg)
+                
+                if msg_type == 'pricing.ClientPrice' and msg.status=='tradeable' and msg.closeoutAsk is not None:    
+                    # print(msg)
+                    instrument = msg.instrument
+                    time = msg.time
+                    bid = msg.closeoutBid # or bids.price?
+                    ask = msg.closeoutAsk
+                    tev = TickEvent(instrument, time, bid, ask)
+                    self.events_queue.put(tev)
+                    # print(msg)
+                elif msg_type == 'pricing.ClientPrice' and msg.status!='tradeable':
+                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),self.instruments,'is not tradeable' )
+        except:
+            print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error streaming' )
+            print(response.body)
+            print(response.body.keys())
+            
+                
+
               
             
         return

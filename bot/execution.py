@@ -10,11 +10,12 @@ from datetime import datetime
 import time
 
 class Execution(object):
-    def __init__(self, domain, access_token, account_id,instruments):
+    def __init__(self, domain, access_token, account_id,instruments,df_instrument):
         self.domain = domain
         self.access_token = access_token
         self.account_id = account_id
         self.instruments=instruments
+        self.df_instrument=df_instrument
         self.conn = self.obtain_connection()
         self.ctx=v20.Context(
                  self.domain,
@@ -30,57 +31,82 @@ class Execution(object):
 
     def execute_order(self, event):
         # Check open position
-        response_OpenPositions=self.ctx.trade.list_open(self.account_id)
-        # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'checked openposition')
-         # If open position doesn't exist
-        if response_OpenPositions.body['trades']==[]:
-            # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'no open position')
-            response_MarketOrder=self.ctx.order.market(
-                 self.account_id,
-                 instrument=event.instrument,
-                 units=event.units,
-                 type=event.order_type,
-                 stopLossOnFill=v20.transaction.StopLossDetails(price=event.SL),
-                 takeProfitOnFill=v20.transaction.TakeProfitDetails(price=event.TP)
-            )
-            if response_MarketOrder.status==201 and response_MarketOrder.reason=='Created':
-                if 'orderFillTransaction' in response_MarketOrder.body.keys():
-                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id),event.side,str(abs(response_MarketOrder.body['orderFillTransaction'].units)),'@',str(response_MarketOrder.body['orderFillTransaction'].price))
-                    text='Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id)+' '+event.side+' '+response_MarketOrder.body['orderFillTransaction'].instrument+' '+str(response_MarketOrder.body['orderFillTransaction'].units)+'@'+str(response_MarketOrder.body['orderFillTransaction'].price)
-                    self.send_Telegram(text)
-                else:
-                    text='KeyError:orderFillTransaction doesn'+"'"+'t exist!'
-                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
-                    time.sleep(3)
-            elif response_MarketOrder.status==400:
-                text='Status: '+str(response_MarketOrder.status)+' Reason: '+response_MarketOrder.reason
-                print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
-                time.sleep(3)
-                return
-        # If open position exist
-        else:
-            # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'open position exist')
-            for position in response_OpenPositions.body['trades']:
-                if event.side=='SELL' and position.instrument==event.instrument and event.units>0 and position.currentUnits>0:
-                    response_ClosePosition = self.ctx.position.close(
+        try:
+            response_OpenPositions=self.ctx.trade.list_open(self.account_id)
+            if 'trades' in response_OpenPositions:
+                for opentrade in response_OpenPositions['trades']:
+                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),'checked openposition #',response_OpenPositions.body['lastTransactionID'].id,response_OpenPositions.body['lastTransactionID'].instrument,response_OpenPositions.body['lastTransactionID'].state,'Price:',response_OpenPositions.body['lastTransactionID'].price,'Units:',response_OpenPositions.body['lastTransactionID'].currentUnits,'Unrealized PNL:',response_OpenPositions.body['lastTransactionID'].unrealizedPL)
+            # If open position doesn't exist
+            if response_OpenPositions.body['trades']==[]:
+                # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'no open position')
+                try:
+                    response_MarketOrder=self.ctx.order.market(
                         self.account_id,
-                        self.instruments,
-                        longUnits="ALL"
+                        instrument=event.instrument,
+                        units=event.units,
+                        type=event.order_type,
+                        stopLossOnFill=v20.transaction.StopLossDetails(price=event.SL),
+                        takeProfitOnFill=v20.transaction.TakeProfitDetails(price=event.TP)
                     )
-                    if response_ClosePosition.status==200:
-                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id),response_ClosePosition.body['longOrderFillTransaction'].instrument,str(response_ClosePosition.body['longOrderFillTransaction'].units),'@',str(response_ClosePosition.body['longOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['longOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance))
-                        text='Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id)+' '+response_ClosePosition.body['longOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['longOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['longOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['longOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance)
+                except:
+                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error place market order')
+                    print(response_MarketOrder.body)
+                    print(response_MarketOrder.body.keys())
+                    pass
+                if response_MarketOrder.status==201 and response_MarketOrder.reason=='Created':
+                    if 'orderFillTransaction' in response_MarketOrder.body.keys():
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id),response_MarketOrder.body['orderFillTransaction'].instrument,event.side,str(abs(response_MarketOrder.body['orderFillTransaction'].units)),'@',str(response_MarketOrder.body['orderFillTransaction'].price))
+                        text='Market Order #'+str(response_MarketOrder.body['orderFillTransaction'].id)+' '+event.side+' '+response_MarketOrder.body['orderFillTransaction'].instrument+' '+str(response_MarketOrder.body['orderFillTransaction'].units)+'@'+str(response_MarketOrder.body['orderFillTransaction'].price)
                         self.send_Telegram(text)
-                elif event.side=='BUY' and position.instrument==event.instrument and event.units<0 and position.currentUnits<0:
-                    response_ClosePosition = self.ctx.position.close(
-                        self.account_id,
-                        self.instruments,
-                        shortUnits="ALL"
-                    )        
-                    if response_ClosePosition.status==200:   
-                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
-                        text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
-                        self.send_Telegram(text)
+                    elif 'orderCancelTransaction' in response_MarketOrder.body.keys():
+                        print(response_MarketOrder.body['orderCancelTransaction'])
+                        # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Order Cancel #',response_MarketOrder.body['orderCancelTransaction'].id,'type:',response_MarketOrder.body['orderCancelTransaction'].type,'reason:',response_MarketOrder.body['orderCancelTransaction'].reason)
+                    else:
+                        text='KeyError:orderFillTransaction doesn'+"'"+'t exist!'
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
+                        print(response_MarketOrder.body.keys())
+                elif response_MarketOrder.status==400:
+                    print(response_MarketOrder.body['orderRejectTransaction'])
+                    # text='Status: '+str(response_MarketOrder.status)+' Reason: '+response_MarketOrder.reason
+                    # print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
+                    return
+            # If open position exist
+            else:
+                # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'open position exist')
+                for position in response_OpenPositions.body['trades']:
+                    if event.side=='SELL' and position.instrument==event.instrument and event.units>0 and position.currentUnits>0:
+                        try:
+                            response_ClosePosition = self.ctx.position.close(
+                                self.account_id,
+                                self.instruments,
+                                longUnits="ALL"
+                            )
+                        except:
+                            print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
+                            pass
+                        if response_ClosePosition.status==200:
+                            print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id),response_ClosePosition.body['longOrderFillTransaction'].instrument,str(response_ClosePosition.body['longOrderFillTransaction'].units),'@',str(response_ClosePosition.body['longOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['longOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance))
+                            text='Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id)+' '+response_ClosePosition.body['longOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['longOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['longOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['longOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance)
+                            self.send_Telegram(text)
+                    elif event.side=='BUY' and position.instrument==event.instrument and event.units<0 and position.currentUnits<0:
+                        try:
+                            response_ClosePosition = self.ctx.position.close(
+                                self.account_id,
+                                self.instruments,
+                                shortUnits="ALL"
+                            )       
+                        except:
+                            print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
+                            pass
+                        if response_ClosePosition.status==200:   
+                            print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
+                            text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
+                            self.send_Telegram(text)
+        except:
+            print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error checked openposition')
+            print(response_OpenPositions.body)
+            print(response_OpenPositions.body.keys())
+            pass
         return
         
         '''

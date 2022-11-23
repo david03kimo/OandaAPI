@@ -2,7 +2,7 @@
 import v20
 
 
-class Instruments():
+class InstrumentsInfo():
     def __init__(self,domain,token,account_id):
         self.domain=domain
         self.token=token
@@ -19,6 +19,7 @@ class Instruments():
         instrument={}
         for instu in instruments:
             instrument[instu.name]={
+                 'name':instu.name,
                  'type':instu.type,
                  'displayName':instu.displayName,
                  'pipLocation':instu.pipLocation,

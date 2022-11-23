@@ -3,10 +3,10 @@ from event import OrderEvent
 from allStrategies import RiskManage,Strategies
 from settings import API_DOMAIN, ACCESS_TOKEN
 import pandas as pd
-
+import time
 
 class TestRandomStrategy(object):
-    def __init__(self, instrument, units, events,df,tf):
+    def __init__(self, instrument, units, events,df,df_instruments,tf):
         self.domain=API_DOMAIN
         self.token=ACCESS_TOKEN
         self.instrument = instrument
@@ -14,6 +14,7 @@ class TestRandomStrategy(object):
         self.events = events
         self.tf=tf
         self.df=df
+        self.df_instruments=df_instruments
         self.ifBarClosed=False
         self.data=[]
         self.justnow=''
@@ -64,11 +65,14 @@ class TestRandomStrategy(object):
         st=Strategies()
         rm=RiskManage()
         action=st._RSI(self.df)
+        
         # for test
-        # action='BUY'
+        # action='SELL'
         # ifBarClosed=True
-        SL=rm.SL(self.df,action)
-        TP=rm.TP(self.df,action)
+        
+        decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
+        SL=str(rm.SL(self.df,abs(decimal),action))
+        TP=str(rm.TP(self.df,abs(decimal),action))
         if ifBarClosed:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
             if action=='BUY':
@@ -82,6 +86,7 @@ class TestRandomStrategy(object):
                 order = OrderEvent(
                     self.instrument, -1*self.units, 'MARKET', action,SL,TP
                 )
-                print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,OrderEvent.units,'SL:',SL,'TP:',TP)
+                print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,self.units,'SL:',SL,'TP:',TP)
                 self.events.put(order)
+        
         return

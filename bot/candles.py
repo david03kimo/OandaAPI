@@ -32,7 +32,7 @@ class historicalCandles():
                 df.DateTime = pd.to_datetime(df.DateTime)
                 # df.index = df.DateTime
                 df.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/historical_df.csv', mode='w', index=0)
-                print('saved historicalCandles')
+                print(self.instruments,'saved historicalCandles')
                  # Show the chart
                 # df.index = df.DateTime
                 # df['Close'].plot()
