@@ -1,6 +1,20 @@
+# Input trade setup
+# instrument = "TWIX_USD"
+# instrument = "US30_USD"
+# instrument = "NL25_EUR"
+# instrument = "UK10YB_GBP"
+# instrument = "JP225_USD"
+# instrument = "XCU_USD"
+# instrument = "EUR_USD"
+# instrument = "XAG_USD"
+instrument = "GBP_USD"
+
+direction='BUY'
+
+
 '''
 
-
+check openposition error
 close market handle
 bid ask mid
 multi-instruments
@@ -17,16 +31,7 @@ type: HEARTBEAT
 
 '''
 
-# Input trade setup
-# instrument = "TWIX_USD"
-# instrument = "US30_USD"
-# instrument = "NL25_EUR"
-instrument = "UK10YB_GBP"
 
-
-# instrument = "XAG_USD"
-
-direction='BUY'
 
 
 

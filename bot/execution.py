@@ -105,8 +105,8 @@ class Execution(object):
                             self.send_Telegram(text)
         except:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error checked openposition')
-            print("response_OpenPositions.body\n",response_OpenPositions.body)
-            print(response_OpenPositions.body.keys())
+            print("response_OpenPositions.body.keys()\n",response_OpenPositions.body.keys())
+            print("response_OpenPositions.body['trades']\n",response_OpenPositions.body['trades'])
             pass
         return
         

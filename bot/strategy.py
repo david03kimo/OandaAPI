@@ -76,7 +76,7 @@ class TestRandomStrategy(object):
         decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
         SL=str(rm.SL(self.df,decimal,action))
         TP=str(rm.TP(self.df,decimal,action))
-        print(decimal,SL,TP)
+        # print(decimal,SL,TP)
         if ifBarClosed:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
             if action=='BUY' and action==self.direction.upper():
