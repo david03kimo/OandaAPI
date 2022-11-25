@@ -32,6 +32,88 @@ class Execution(object):
 
     def execute_order(self, event):
         # Check open position
+        try:
+            api=OandaAPI()
+            response_OpenPositions=api.get_open_trades()
+            openTrades=response_OpenPositions[1]['trades']
+            if response_OpenPositions[0]==200 and len(openTrades)!=0:
+                for opentrade in range(len(response_OpenPositions[1]['trades'])):
+                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),'checked openposition #',response_OpenPositions[1]['trades'][opentrade]['id'],response_OpenPositions[1]['trades'][opentrade]['instrument'],response_OpenPositions[1]['trades'][opentrade]['state'],'Price:',response_OpenPositions[1]['trades'][opentrade]['price'],'Units:',response_OpenPositions[1]['trades'][opentrade]['currentUnits'],'Unrealized PNL:',response_OpenPositions[1]['trades'][opentrade]['unrealizedPL'],'margin Used:',response_OpenPositions[1]['trades'][opentrade]['marginUsed'])
+                    ifOpenPosition=event.instrument==response_OpenPositions[1]['trades'][opentrade]['instrument']
+        except:
+            print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error RESTful checked openposition')
+            print(response_OpenPositions)
+            
+        # If open position doesn't exist
+        if len(openTrades)==0 or (len(openTrades)!=0 and not ifOpenPosition):
+            try:
+                response_MarketOrder=api.market_order(event)
+            except:
+                print(datetime.fromtimestamp(int(datetime.now().timestamp())),response_MarketOrder[1].keys())
+                pass
+            if response_MarketOrder[0]==201:
+                if 'orderFillTransaction' in response_MarketOrder[1].keys():
+                    text='Market Order #'+response_MarketOrder[1]['orderFillTransaction']['id']+' '+response_MarketOrder[1]['orderFillTransaction']['instrument']+' '+event.side+' '+response_MarketOrder[1]['orderFillTransaction']['units']+'@'+response_MarketOrder[1]['orderFillTransaction']['price']
+                    print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
+                    self.send_Telegram(text)
+                elif 'orderCancelTransaction' in response_MarketOrder[1].keys():
+                    print(response_MarketOrder[1]['orderCancelTransaction'])
+                else:
+                    print(response_MarketOrder[1].keys())
+            elif response_MarketOrder.status==400:
+                print(response_MarketOrder[1].keys())
+                print("response_MarketOrder.body['orderRejectTransaction']\n",response_MarketOrder.body['orderRejectTransaction'])
+                # text='Status: '+str(response_MarketOrder.status)+' Reason: '+response_MarketOrder.reason
+                # print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
+                return
+        # If open position exist
+        else:
+            # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'open position exist')
+            for position in openTrades:
+                if event.side=='SELL' and position['instrument']==event.instrument and event.units>0 and position['currentUnits']>0:
+                    try:
+                        response_ClosePosition = self.ctx.position.close(
+                            self.account_id,
+                            event.instruments,
+                            longUnits="ALL"
+                        )
+                    except:
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
+                        pass
+                    if response_ClosePosition.status==200:
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id),response_ClosePosition.body['longOrderFillTransaction'].instrument,str(response_ClosePosition.body['longOrderFillTransaction'].units),'@',str(response_ClosePosition.body['longOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['longOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance))
+                        text='Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id)+' '+response_ClosePosition.body['longOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['longOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['longOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['longOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance)
+                        self.send_Telegram(text)
+                elif event.side=='BUY' and position['instrument']==event.instrument and event.units<0 and position['currentUnits']<0:
+                    try:
+                        response_ClosePosition = self.ctx.position.close(
+                            self.account_id,
+                            event.instruments,
+                            shortUnits="ALL"
+                        )       
+                    except:
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
+                        pass
+                    if response_ClosePosition.status==200:   
+                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
+                        text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
+                        self.send_Telegram(text)
+        return
+        
+    def send_Telegram(self,text):
+        config = configparser.ConfigParser()
+        config.read('/Users/apple/Documents/code/PythonX86/OandaAPI/Settings/TelegramConfig.cfg')
+        token = config.get('Section_A', 'token')
+        chatid = config.get('Section_A', 'chatid')
+        text='Oanda: '+text
+        params = {'chat_id': chatid, 'text': text, 'parse_mode': 'HTML'}
+        resp = requests.post(
+         'https://api.telegram.org/bot{}/sendMessage'.format(token), params)
+        resp.raise_for_status()
+        return
+    
+    def execute_order_backup(self, event):
+        # Check open position
         # try:
         #     response_OpenPositions=self.ctx.trade.list_open(self.account_id)
         #     if len(response_OpenPositions.body['trades'])!=0:
@@ -128,17 +210,5 @@ class Execution(object):
                         print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
                         text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
                         self.send_Telegram(text)
-        return
-        
-    def send_Telegram(self,text):
-        config = configparser.ConfigParser()
-        config.read('/Users/apple/Documents/code/PythonX86/OandaAPI/Settings/TelegramConfig.cfg')
-        token = config.get('Section_A', 'token')
-        chatid = config.get('Section_A', 'chatid')
-        text='Oanda: '+text
-        params = {'chat_id': chatid, 'text': text, 'parse_mode': 'HTML'}
-        resp = requests.post(
-         'https://api.telegram.org/bot{}/sendMessage'.format(token), params)
-        resp.raise_for_status()
         return
     
