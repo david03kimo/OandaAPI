@@ -32,8 +32,8 @@ from instruments import InstrumentsInfo
 
 class TradeSetup:
     def __init__(self):
-        self.instrument=INSTRUMENT
-        self.direction=DIRECTION
+        self.instrument=INSTRUMENT.upper()
+        self.direction=DIRECTION.upper()
         self.units=UNITS
         self.ordercount=ORDERCOUNT
         self.timeFrame1=TIMEFRAME1

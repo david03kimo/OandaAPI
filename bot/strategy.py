@@ -73,6 +73,7 @@ class TestRandomStrategy(object):
         # action='BUY'
         # ifBarClosed=True
         
+        
         decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
         SL=str(rm.SL(self.df,decimal,action))
         TP=str(rm.TP(self.df,decimal,action))
@@ -92,5 +93,6 @@ class TestRandomStrategy(object):
                 )
                 print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,self.units,'SL:',SL,'TP:',TP)
                 self.events.put(order)
+        
         
         return

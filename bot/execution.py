@@ -36,15 +36,17 @@ class Execution(object):
             api=OandaAPI()
             response_OpenPositions=api.get_open_trades()
             openTrades=response_OpenPositions[1]['trades']
+            openPositions=[]
             if response_OpenPositions[0]==200 and len(openTrades)!=0:
                 for opentrade in range(len(response_OpenPositions[1]['trades'])):
                     print(datetime.fromtimestamp(int(datetime.now().timestamp())),'checked openposition #',response_OpenPositions[1]['trades'][opentrade]['id'],response_OpenPositions[1]['trades'][opentrade]['instrument'],response_OpenPositions[1]['trades'][opentrade]['state'],'Price:',response_OpenPositions[1]['trades'][opentrade]['price'],'Units:',response_OpenPositions[1]['trades'][opentrade]['currentUnits'],'Unrealized PNL:',response_OpenPositions[1]['trades'][opentrade]['unrealizedPL'],'margin Used:',response_OpenPositions[1]['trades'][opentrade]['marginUsed'])
-                    ifOpenPosition=event.instrument==response_OpenPositions[1]['trades'][opentrade]['instrument']
+                    openPositions.append(response_OpenPositions[1]['trades'][opentrade]['instrument'])
         except:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error RESTful checked openposition')
             print(response_OpenPositions)
             
         # If open position doesn't exist
+        ifOpenPosition=event.instrument in openPositions
         if len(openTrades)==0 or (len(openTrades)!=0 and not ifOpenPosition):
             try:
                 response_MarketOrder=api.market_order(event)
@@ -135,6 +137,8 @@ class Execution(object):
             # print(response_openTrades(1)['trades'])
             for opentrade in range(len(response_OpenPositions[1]['trades'])):
                 print(datetime.fromtimestamp(int(datetime.now().timestamp())),'checked openposition #',response_OpenPositions[1]['trades'][opentrade]['id'],response_OpenPositions[1]['trades'][opentrade]['instrument'],response_OpenPositions[1]['trades'][opentrade]['state'],'Price:',response_OpenPositions[1]['trades'][opentrade]['price'],'Units:',response_OpenPositions[1]['trades'][opentrade]['currentUnits'],'Unrealized PNL:',response_OpenPositions[1]['trades'][opentrade]['unrealizedPL'],'margin Used:',response_OpenPositions[1]['trades'][opentrade]['marginUsed'])
+                # if event.instrument==response_OpenPositions[1]['trades'][opentrade]['instrument']:
+                #     ifOpenPosition=
             openTrades=response_OpenPositions[1]['trades']
         else:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error RESTful checked openposition')
