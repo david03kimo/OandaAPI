@@ -3,16 +3,14 @@ from event import OrderEvent
 from allStrategies import RiskManage,Strategies
 from settings import API_DOMAIN, ACCESS_TOKEN
 import pandas as pd
-from decimal import Decimal
-
 import time
 
 class TestRandomStrategy(object):
-    def __init__(self, instrument, units, events,df,df_instruments,direction,tf):
+    def __init__(self,accountDetails,instrument,events,df,df_instruments,direction,tf):
         self.domain=API_DOMAIN
         self.token=ACCESS_TOKEN
         self.instrument = instrument
-        self.units = units
+        self.units = 0
         self.events = events
         self.direction = direction
         self.tf=tf
@@ -27,6 +25,8 @@ class TestRandomStrategy(object):
             'Low':'min',
             'Close': 'last'
             }
+        self.close=0
+        self.accountDetails=accountDetails
         
     def resample_to_candles(self,event):
         ifBarClosed=False
@@ -38,6 +38,7 @@ class TestRandomStrategy(object):
             # self.df_ticks.DateTime = pd.to_datetime(self.df_ticks.DateTime)
             # self.df_ticks.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df_ticks.csv', mode='w', index=1)
             if ts/(self.tf*60)==ts//(self.tf*60) and self.justnow!=ts:  
+                self.close=event.ask
                 # print('pass',ts/self.tf,ts//self.tf,self.justnow,ts)
                 self.df_ticks=pd.DataFrame(self.data, columns=['DateTime','Ask'])
                 self.df_ticks.DateTime = pd.to_datetime(self.df_ticks.DateTime)
@@ -61,6 +62,7 @@ class TestRandomStrategy(object):
                 # self.df.reset_index(drop=True) 
                 self.df.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df.csv', mode='w', index=1)
                 ifBarClosed=True
+                
         return ifBarClosed
     
     def calculate_signals(self, event):
@@ -68,25 +70,37 @@ class TestRandomStrategy(object):
         st=Strategies()
         rm=RiskManage()
         action=st._RSI(self.df)
-        
         # for test
-        # action='BUY'
+        # action='SELL'
         # ifBarClosed=True
         
-        
-        decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
-        SL=str(rm.SL(self.df,decimal,action))
-        TP=str(rm.TP(self.df,decimal,action))
         # print(decimal,SL,TP)
         if ifBarClosed:
             print(datetime.fromtimestamp(int(datetime.now().timestamp())),event.instrument,self.tf,'min Bar Closed')
             if action=='BUY' and action==self.direction.upper():
+                decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
+                SL=str(rm.SL(self.df,decimal,action))
+                TP=str(rm.TP(self.df,decimal,action))
+                self.units=(float(self.accountDetails['account']['balance'])*0.02/(self.close-float(SL)))//float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])*float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])
+                # print('self.accountDetails*0.02',float(self.accountDetails['account']['balance'])*0.02)
+                # print('close',self.close)
+                # print('SL:',SL)
+                # print('units:',self.units)
+                
                 print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,self.units,'SL:',SL,'TP:',TP)
                 order = OrderEvent(
                     self.instrument, self.units, 'MARKET', action,SL,TP
                 )
                 self.events.put(order)
             elif action=='SELL' and action==self.direction.upper():
+                decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
+                SL=str(rm.SL(self.df,decimal,action))
+                TP=str(rm.TP(self.df,decimal,action))
+                self.units=(float(self.accountDetails['account']['balance'])*0.02/(float(SL)-self.close))//float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])*float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])
+                # print('self.accountDetails*0.02',float(self.accountDetails['account']['balance'])*0.02)
+                # print('close',self.close)
+                # print('SL:',SL)
+                # print('units:',self.units)
                 
                 order = OrderEvent(
                     self.instrument, -1*self.units, 'MARKET', action,SL,TP

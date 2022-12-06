@@ -27,6 +27,9 @@ class InstrumentsInfo():
                  'marginRate': instu.marginRate
                  }
         return instrument
+    
+
+
             
         
         '''

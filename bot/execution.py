@@ -9,6 +9,7 @@ import requests
 from datetime import datetime
 import time
 from oandaRESTAPI import OandaAPI
+import os
 
 class Execution(object):
     def __init__(self, domain, access_token, account_id,instruments,df_instrument):
@@ -58,13 +59,15 @@ class Execution(object):
                     text='Market Order #'+response_MarketOrder[1]['orderFillTransaction']['id']+' '+response_MarketOrder[1]['orderFillTransaction']['instrument']+' '+event.side+' '+response_MarketOrder[1]['orderFillTransaction']['units']+'@'+response_MarketOrder[1]['orderFillTransaction']['price']
                     print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
                     self.send_Telegram(text)
+                    os._exit(0) 
                 elif 'orderCancelTransaction' in response_MarketOrder[1].keys():
                     print(response_MarketOrder[1]['orderCancelTransaction'])
                 else:
                     print(response_MarketOrder[1].keys())
-            elif response_MarketOrder.status==400:
-                print(response_MarketOrder[1].keys())
-                print("response_MarketOrder.body['orderRejectTransaction']\n",response_MarketOrder.body['orderRejectTransaction'])
+            # elif response_MarketOrder.status==400:
+            elif response_MarketOrder[0]==400:
+                print(response_MarketOrder[1])
+                # print("response_MarketOrder.body['orderRejectTransaction']\n",response_MarketOrder.body['orderRejectTransaction'])
                 # text='Status: '+str(response_MarketOrder.status)+' Reason: '+response_MarketOrder.reason
                 # print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
                 return

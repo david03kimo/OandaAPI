@@ -1,6 +1,7 @@
 from event import TickEvent
 import v20
 from datetime import datetime
+from oandaRESTAPI import OandaAPI
 
 class StreamingForexPrices(object):
     def __init__(

@@ -1,25 +1,5 @@
-'''
-
-check open order if same instrument
-check openposition error:change to RESTful protocol
-close market handle
-bid ask mid
-multi-instruments
-
-check balance and margin
-account info:ID,base currency,total amount,balance remain to trade,leverage;optional:Realized and Unrealized PNL,margin used,open trades,open orders.
-report after SL/TP
-
-requirement:
-
-SL/TP/Close position
-toggle tradeable or not with timestamp.
-type: HEARTBEAT
-
-'''
-
 from settings import STREAM_DOMAIN, API_DOMAIN, ACCESS_TOKEN, ACCOUNT_ID
-from tradeSetup import INSTRUMENT,DIRECTION,UNITS,ORDERCOUNT,TIMEFRAME1,TIMEFRAME2,TIMEFRAME3,RISKAMOUT,IFSIGNALEXIT
+from tradeSetup import INSTRUMENT,DIRECTION,ORDERCOUNT,TIMEFRAME1,TIMEFRAME2,TIMEFRAME3,RISKAMOUT,IFSIGNALEXIT
 import pandas as pd
 import queue
 import threading
@@ -29,12 +9,12 @@ from strategy import TestRandomStrategy
 from streaming import StreamingForexPrices
 from candles import historicalCandles
 from instruments import InstrumentsInfo
+from oandaRESTAPI import OandaAPI
 
 class TradeSetup:
     def __init__(self):
-        self.instrument=INSTRUMENT.upper()
+        self.instrument=INSTRUMENT[:len(INSTRUMENT)-3].upper()+'_'+INSTRUMENT[-3:].upper()
         self.direction=DIRECTION.upper()
-        self.units=UNITS
         self.ordercount=ORDERCOUNT
         self.timeFrame1=TIMEFRAME1
         self.timeFrame2=TIMEFRAME2
@@ -73,6 +53,11 @@ if __name__ == "__main__":
     # import TradeSetup
     ts=TradeSetup()
     
+    # Get Account Details
+    api=OandaAPI()
+    response_account=api.get_account()
+    accountDetails=response_account[1]
+    
     # Get Instruments List
     instru=InstrumentsInfo(API_DOMAIN,ACCESS_TOKEN,ACCOUNT_ID)
     instrumentsDict=instru.get_instruments()
@@ -81,10 +66,10 @@ if __name__ == "__main__":
         df_instruments.loc[i]=i,instrumentsDict[i]['type'],instrumentsDict[i]['displayName'],instrumentsDict[i]['pipLocation'],instrumentsDict[i]['minimumTradeSize'],instrumentsDict[i]['marginRate']
     # df_instruments.to_csv('/Users/apple/Documents/code/PythonX86/OandaAPI/Output/df_instruments.csv', mode='w', index=1)
     
-    if df_instruments.loc[ts.instrument,'type']=='CFD' or df_instruments.loc[ts.instrument,'type']=='METAL':
-        units = df_instruments.loc[ts.instrument,'minimumTradeSize']
-    elif df_instruments.loc[ts.instrument,'type']=='CURRENCY':
-        units=1000*df_instruments.loc[ts.instrument,'minimumTradeSize']
+    # if df_instruments.loc[ts.instrument,'type']=='CFD' or df_instruments.loc[ts.instrument,'type']=='METAL':
+    #     units = df_instruments.loc[ts.instrument,'minimumTradeSize']
+    # elif df_instruments.loc[ts.instrument,'type']=='CURRENCY':
+    #     units=1000*df_instruments.loc[ts.instrument,'minimumTradeSize']
     
     # Creat the OANDA historical data class
     candles=historicalCandles(
@@ -104,7 +89,7 @@ if __name__ == "__main__":
     # Create the strategy/signal generator, passing the
     # instrument, quantity of units and the events queue
     # strategy = TestRandomStrategy(instrument, units, events)
-    strategy = TestRandomStrategy(ts.instrument, units,events,df,df_instruments,ts.direction,ts.timeFrame1)
+    strategy = TestRandomStrategy(accountDetails,ts.instrument,events,df,df_instruments,ts.direction,ts.timeFrame1)
 
     # Create two separate threads: One for the trading loop
     # and another for the market price streaming class
