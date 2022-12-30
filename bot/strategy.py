@@ -2,6 +2,7 @@ from datetime import datetime
 from event import OrderEvent
 from allStrategies import RiskManage,Strategies
 from settings import API_DOMAIN, ACCESS_TOKEN
+from tradeSetup import RR
 import pandas as pd
 import time
 
@@ -15,6 +16,7 @@ class TestRandomStrategy(object):
         self.direction = direction
         self.tf=tf
         self.df=df
+        self.rr=RR
         self.df_instruments=df_instruments
         self.ifBarClosed=False
         self.data=[]
@@ -80,8 +82,8 @@ class TestRandomStrategy(object):
             if action=='BUY' and action==self.direction.upper():
                 decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
                 SL=str(rm.SL(self.df,decimal,action))
-                TP=str(rm.TP(self.df,decimal,action))
-                self.units=(float(self.accountDetails['account']['balance'])*0.02/(self.close-float(SL)))//float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])*float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])
+                TP=str(rm.TP(self.df,decimal,action,self.rr))
+                self.units=(float(self.accountDetails['account']['balance'])*0.01/(self.close-float(SL)))//float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])*float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])
                 # print('self.accountDetails*0.02',float(self.accountDetails['account']['balance'])*0.02)
                 # print('close',self.close)
                 # print('SL:',SL)
@@ -92,11 +94,12 @@ class TestRandomStrategy(object):
                     self.instrument, self.units, 'MARKET', action,SL,TP
                 )
                 self.events.put(order)
+                
             elif action=='SELL' and action==self.direction.upper():
                 decimal=int(self.df_instruments.loc[self.instrument,'pipLocation'])
                 SL=str(rm.SL(self.df,decimal,action))
-                TP=str(rm.TP(self.df,decimal,action))
-                self.units=(float(self.accountDetails['account']['balance'])*0.02/(float(SL)-self.close))//float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])*float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])
+                TP=str(rm.TP(self.df,decimal,action,self.rr))
+                self.units=(float(self.accountDetails['account']['balance'])*0.01/(float(SL)-self.close))//float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])*float(self.df_instruments.loc[self.instrument,'minimumTradeSize'])
                 # print('self.accountDetails*0.02',float(self.accountDetails['account']['balance'])*0.02)
                 # print('close',self.close)
                 # print('SL:',SL)
@@ -107,6 +110,12 @@ class TestRandomStrategy(object):
                 )
                 print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Place Order:',action,event.instrument,self.units,'SL:',SL,'TP:',TP)
                 self.events.put(order)
+                
+            # elif event.ask >10*10*decimal+
+                
+            
+            
+            
         
         
         return

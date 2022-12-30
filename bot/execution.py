@@ -48,7 +48,7 @@ class Execution(object):
             
         # If open position doesn't exist
         ifOpenPosition=event.instrument in openPositions
-        if len(openTrades)==0 or (len(openTrades)!=0 and not ifOpenPosition):
+        if len(openTrades)==0 or (len(openTrades)!=0 and not ifOpenPosition) and event.order_type=='MARKET':
             try:
                 response_MarketOrder=api.market_order(event)
             except:
@@ -72,37 +72,50 @@ class Execution(object):
                 # print(datetime.fromtimestamp(int(datetime.now().timestamp())),text)
                 return
         # If open position exist
-        else:
+        # elif ifOpenPosition and event.order_type=='TRAIL STOP':
+            
+            
+        
+        
+        
+        
+        # else:
             # print(datetime.fromtimestamp(int(datetime.now().timestamp())),'open position exist')
-            for position in openTrades:
-                if event.side=='SELL' and position['instrument']==event.instrument and event.units>0 and position['currentUnits']>0:
-                    try:
-                        response_ClosePosition = self.ctx.position.close(
-                            self.account_id,
-                            event.instruments,
-                            longUnits="ALL"
-                        )
-                    except:
-                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
-                        pass
-                    if response_ClosePosition.status==200:
-                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id),response_ClosePosition.body['longOrderFillTransaction'].instrument,str(response_ClosePosition.body['longOrderFillTransaction'].units),'@',str(response_ClosePosition.body['longOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['longOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance))
-                        text='Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id)+' '+response_ClosePosition.body['longOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['longOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['longOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['longOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance)
-                        self.send_Telegram(text)
-                elif event.side=='BUY' and position['instrument']==event.instrument and event.units<0 and position['currentUnits']<0:
-                    try:
-                        response_ClosePosition = self.ctx.position.close(
-                            self.account_id,
-                            event.instruments,
-                            shortUnits="ALL"
-                        )       
-                    except:
-                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
-                        pass
-                    if response_ClosePosition.status==200:   
-                        print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
-                        text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
-                        self.send_Telegram(text)
+            
+            
+            
+            # close the open position
+            # for position in openTrades:
+            #     if event.side=='SELL' and position['instrument']==event.instrument and event.units>0 and position['currentUnits']>0:
+            #         try:
+            #             response_ClosePosition = self.ctx.position.close(
+            #                 self.account_id,
+            #                 event.instruments,
+            #                 longUnits="ALL"
+            #             )
+            #         except:
+            #             print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
+            #             pass
+            #         if response_ClosePosition.status==200:
+            #             print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id),response_ClosePosition.body['longOrderFillTransaction'].instrument,str(response_ClosePosition.body['longOrderFillTransaction'].units),'@',str(response_ClosePosition.body['longOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['longOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance))
+            #             text='Position Closed #'+str(response_ClosePosition.body['longOrderFillTransaction'].id)+' '+response_ClosePosition.body['longOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['longOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['longOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['longOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['longOrderFillTransaction'].accountBalance)
+            #             self.send_Telegram(text)
+            #     elif event.side=='BUY' and position['instrument']==event.instrument and event.units<0 and position['currentUnits']<0:
+            #         try:
+            #             response_ClosePosition = self.ctx.position.close(
+            #                 self.account_id,
+            #                 event.instruments,
+            #                 shortUnits="ALL"
+            #             )       
+            #         except:
+            #             print(datetime.fromtimestamp(int(datetime.now().timestamp())),'error close longposition')
+            #             pass
+            #         if response_ClosePosition.status==200:   
+            #             print(datetime.fromtimestamp(int(datetime.now().timestamp())),'Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id),response_ClosePosition.body['shortOrderFillTransaction'].instrument,str(response_ClosePosition.body['shortOrderFillTransaction'].units),'@',str(response_ClosePosition.body['shortOrderFillTransaction'].price),'with PNL:',str(response_ClosePosition.body['shortOrderFillTransaction'].pl),'accountBalance:',str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance))
+            #             text='Position Closed #'+str(response_ClosePosition.body['shortOrderFillTransaction'].id)+' '+response_ClosePosition.body['shortOrderFillTransaction'].instrument+' '+str(response_ClosePosition.body['shortOrderFillTransaction'].units)+'@'+str(response_ClosePosition.body['shortOrderFillTransaction'].price)+' with PNL:'+str(response_ClosePosition.body['shortOrderFillTransaction'].pl)+' '+'accountBalance:'+str(response_ClosePosition.body['shortOrderFillTransaction'].accountBalance)
+            #             self.send_Telegram(text)
+            
+            
         return
         
     def send_Telegram(self,text):
